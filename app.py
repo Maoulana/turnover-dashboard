@@ -19,13 +19,27 @@ label_list = ["budaya", "gaji", "karir", "peluang_baru", "wlb"]
 label_map = {i: lab for i, lab in enumerate(label_list)}
 
 kamus = {
-    "gaji": ["gaji", "underpaid", "bonus", "thr", "tunjangan"],
-    "budaya": ["toxic", "bos", "rekan", "micromanagement", "micro management"],
-    "karir": ["promosi", "jenjang", "karir", "stuck"],
-    "wlb": ["work life balance", "wlb", "lembur", "overtime", "burnout", "overwork"],
-    "peluang_baru": ["job offer", "pekerjaan baru", "kerja baru", "pindah kerja", "resign", "tawaran kerja"],
+    "gaji": [
+        "gaji kecil", "gaji rendah", "underpaid", "tunjangan", "bonus tahunan",
+        "insentif", "thr"
+    ],
+    "budaya": [
+        "rekan bossy", "bos toxic", "atasan toxic", "rekan kerja toxic",
+        "micro management", "micromanagement", "manajemen buruk"
+    ],
+    "karir": [
+        "karir stagnan", "promosi jabatan", "jenjang karir", "karir tidak berkembang",
+        "jabatan stuck", "karir stuck"
+    ],
+    "wlb": [
+        "work life balance", "lembur", "overtime", "wlb", "burnout",
+        "overwork", "masuk terus"
+    ],
+    "peluang_baru": [
+        "pekerjaan baru", "job offer", "pindah kerja", "resign",
+        "cari kerja baru", "tawaran kerja"
+    ],
 }
-
 def basic_clean(text: str) -> str:
     if not isinstance(text, str):
         return ""
@@ -53,15 +67,37 @@ def detect_keywords(text: str):
                 hits.append((kw, kat))
     return hits
 
+# =========================
+# Konfigurasi halaman utama
+# =========================
 st.set_page_config(page_title="Dashboard Turnover Twitter", layout="wide")
-st.sidebar.title("Menu")
-# Sidebar
+
 st.sidebar.title("Menu")
 page = st.sidebar.radio(
     "Pilih halaman:",
     ("Overview Dataset", "Preprocessing Pipeline", "Klasifikasi Keluhan", "Alasan Utama Turnover")
 )
 
+# =========================
+# Halaman Overview Dataset
+# =========================
+if page == "Overview Dataset":
+    st.title("Overview Dataset Turnover Twitter")
+    st.metric("Jumlah tweet turnover (setelah filter)", len(df))
+
+    st.subheader("Distribusi Kategori Alasan (Bar Chart)")
+    cat_counts = df["kategori"].value_counts().reindex(label_list)
+    st.bar_chart(cat_counts)
+
+    st.subheader("Proporsi Kategori Alasan (Pie Chart)")
+    df_pie = cat_counts.reset_index()
+    df_pie.columns = ["kategori", "jumlah"]
+    fig_pie = px.pie(df_pie, names="kategori", values="jumlah", hole=0.3)
+    st.plotly_chart(fig_pie, use_container_width=True)
+
+# =========================
+# Halaman Preprocessing
+# =========================
 elif page == "Preprocessing Pipeline":
     st.title("Preprocessing Data Crawling")
     uploaded = st.file_uploader("Upload file CSV mentah", type=["csv"])
@@ -71,30 +107,14 @@ elif page == "Preprocessing Pipeline":
         st.dataframe(df_raw.head())
 
         if st.button("Jalankan preprocessing"):
-            # sementara dummy dulu
-            st.warning("Fungsi run_preprocessing() belum diimplementasikan.")
-            # nanti di sini kita panggil run_preprocessing(df_raw)
+            st.warning("Fungsi run_preprocessing() belum diimplementasikan (masih dummy).")
+            # TODO: nanti di sini panggil run_preprocessing(df_raw)
+            # df_clean = run_preprocessing(df_raw)
+            # st.dataframe(df_clean.head())
 
-elif page == "Alasan Utama Turnover":
-    st.title("Alasan Utama Turnover (Feature Importance)")
-    top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, 30, 15)
-    df_top = df_rank.head(top_n)
-    st.dataframe(df_top[["rank", "keyword", "importance"]])
-    st.bar_chart(df_top.set_index("keyword")["importance"])
-if page == "Overview Dataset":
-    st.title("Overview Dataset Turnover Twitter")
-    st.metric("Jumlah tweet turnover (setelah filter)", len(df))
-    st.subheader("Distribusi Kategori Alasan")
-    cat_counts = df["kategori"].value_counts().reindex(label_list)
-    st.bar_chart(cat_counts)
-        st.subheader("Proporsi Kategori Alasan (Pie Chart)")
-    df_pie = cat_counts.reset_index()
-    df_pie.columns = ["kategori", "jumlah"]
-    st.plotly_chart(
-        px.pie(df_pie, names="kategori", values="jumlah", hole=0.3),
-        use_container_width=True
-    )
-
+# =========================
+# Halaman Klasifikasi
+# =========================
 elif page == "Klasifikasi Keluhan":
     st.title("Klasifikasi Keluhan Kerja")
     text_input = st.text_area("Teks keluhan / tweet", height=150)
@@ -114,6 +134,9 @@ elif page == "Klasifikasi Keluhan":
             else:
                 st.write("Tidak ada kata kunci kamus yang terdeteksi.")
 
+# =========================
+# Halaman Feature Importance
+# =========================
 elif page == "Alasan Utama Turnover":
     st.title("Alasan Utama Turnover (Feature Importance)")
     top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, 30, 15)
