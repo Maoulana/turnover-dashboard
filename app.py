@@ -54,10 +54,21 @@ def detect_keywords(text: str):
 
 st.set_page_config(page_title="Dashboard Turnover Twitter", layout="wide")
 st.sidebar.title("Menu")
+# Sidebar
+st.sidebar.title("Menu")
 page = st.sidebar.radio(
     "Pilih halaman:",
     ("Overview Dataset", "Preprocessing Pipeline", "Klasifikasi Keluhan", "Alasan Utama Turnover")
 )
+
+# Routing halaman
+if page == "Overview Dataset":
+    st.title("Overview Dataset Turnover Twitter")
+    st.metric("Jumlah tweet turnover (setelah filter)", len(df))
+    st.subheader("Distribusi Kategori Alasan")
+    cat_counts = df["kategori"].value_counts().reindex(label_list)
+    st.bar_chart(cat_counts)
+
 elif page == "Preprocessing Pipeline":
     st.title("Preprocessing Data Crawling")
     uploaded = st.file_uploader("Upload file CSV mentah", type=["csv"])
@@ -67,19 +78,35 @@ elif page == "Preprocessing Pipeline":
         st.dataframe(df_raw.head())
 
         if st.button("Jalankan preprocessing"):
-            # TODO: panggil fungsi pipeline yang kamu punya
-            df_clean = run_preprocessing(df_raw)  # nanti kita definisikan
-            st.success(f"Preprocessing selesai. Jumlah tweet setelah filter turnover: {len(df_clean)}")
-            st.write("Preview hasil preprocessing:")
-            st.dataframe(df_clean.head())
+            # sementara dummy dulu
+            st.warning("Fungsi run_preprocessing() belum diimplementasikan.")
+            # nanti di sini kita panggil run_preprocessing(df_raw)
 
-            csv_bytes = df_clean.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                "Download CSV hasil preprocessing",
-                data=csv_bytes,
-                file_name="hasil_preprocessing_turnover.csv",
-                mime="text/csv",
-            )
+elif page == "Klasifikasi Keluhan":
+    st.title("Klasifikasi Keluhan Kerja")
+    text_input = st.text_area("Teks keluhan / tweet", height=150)
+    if st.button("Analisis"):
+        if not text_input.strip():
+            st.warning("Tolong isi teks terlebih dahulu.")
+        else:
+            pred_label, proba = predict_reason(text_input)
+            st.subheader(f"Hasil prediksi kategori: **{pred_label}**")
+            proba_dict = {label_map[i]: float(p) for i, p in enumerate(proba)}
+            st.bar_chart(proba_dict)
+            hits = detect_keywords(text_input)
+            if hits:
+                st.write("Kata kunci kamus yang terdeteksi:")
+                for kw, kat in hits:
+                    st.write(f"- `{kw}` → **{kat}**")
+            else:
+                st.write("Tidak ada kata kunci kamus yang terdeteksi.")
+
+elif page == "Alasan Utama Turnover":
+    st.title("Alasan Utama Turnover (Feature Importance)")
+    top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, 30, 15)
+    df_top = df_rank.head(top_n)
+    st.dataframe(df_top[["rank", "keyword", "importance"]])
+    st.bar_chart(df_top.set_index("keyword")["importance"])
 if page == "Overview Dataset":
     st.title("Overview Dataset Turnover Twitter")
     st.metric("Jumlah tweet turnover (setelah filter)", len(df))
