@@ -1,0 +1,35 @@
+rank,keyword,raw_feature,importance
+1,promosi jabatan,kw_promosi_jabatan,0.22878821194171906
+2,bos toxic,kw_bos_toxic,0.0850236713886261
+3,karir stuck,kw_karir_stuck,0.07768319547176361
+4,rekan kerja toxic,kw_rekan_kerja_toxic,0.06509573012590408
+5,job offer,kw_job_offer,0.056774288415908813
+6,jenjang karir,kw_jenjang_karir,0.055062517523765564
+7,wlb,kw_wlb,0.046359557658433914
+8,overtime,kw_overtime,0.044987548142671585
+9,cari kerja baru,kw_cari_kerja_baru,0.03931254521012306
+10,atasan toxic,kw_atasan_toxic,0.03655777871608734
+11,micro management,kw_micro_management,0.03242688998579979
+12,overwork,kw_overwork,0.030167654156684875
+13,tawaran kerja,kw_tawaran_kerja,0.029332607984542847
+14,bonus,kw_bonus,0.027727480977773666
+15,pekerjaan baru,kw_pekerjaan_baru,0.026541253551840782
+16,underpaid,kw_underpaid,0.02561747096478939
+17,resign,kw_resign,0.0253479965031147
+18,gaji kecil,kw_gaji_kecil,0.02124594710767269
+19,lembur,kw_lembur,0.016376089304685593
+20,thr,kw_thr,0.016225263476371765
+21,pindah kerja,kw_pindah_kerja,0.013346312567591667
+22,jabatan stuck,kw_jabatan_stuck,0.0
+23,masuk terus,kw_masuk_terus,0.0
+24,karir tidak berkembang,kw_karir_tidak_berkembang,0.0
+25,work life balance,kw_work_life_balance,0.0
+26,burnout,kw_burnout,0.0
+27,rekan bossy,kw_rekan_bossy,0.0
+28,karir stagnan,kw_karir_stagnan,0.0
+29,manajemen buruk,kw_manajemen_buruk,0.0
+30,micromanagement,kw_micromanagement,0.0
+31,bonus tahunan,kw_bonus_tahunan,0.0
+32,insentif,kw_insentif,0.0
+33,tunjangan,kw_tunjangan,0.0
+34,gaji rendah,kw_gaji_rendah,0.0
