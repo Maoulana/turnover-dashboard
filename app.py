@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import re
+import plotly.express as px
 
 @st.cache_resource
 def load_artifacts():
@@ -61,14 +62,6 @@ page = st.sidebar.radio(
     ("Overview Dataset", "Preprocessing Pipeline", "Klasifikasi Keluhan", "Alasan Utama Turnover")
 )
 
-# Routing halaman
-if page == "Overview Dataset":
-    st.title("Overview Dataset Turnover Twitter")
-    st.metric("Jumlah tweet turnover (setelah filter)", len(df))
-    st.subheader("Distribusi Kategori Alasan")
-    cat_counts = df["kategori"].value_counts().reindex(label_list)
-    st.bar_chart(cat_counts)
-
 elif page == "Preprocessing Pipeline":
     st.title("Preprocessing Data Crawling")
     uploaded = st.file_uploader("Upload file CSV mentah", type=["csv"])
@@ -82,25 +75,6 @@ elif page == "Preprocessing Pipeline":
             st.warning("Fungsi run_preprocessing() belum diimplementasikan.")
             # nanti di sini kita panggil run_preprocessing(df_raw)
 
-elif page == "Klasifikasi Keluhan":
-    st.title("Klasifikasi Keluhan Kerja")
-    text_input = st.text_area("Teks keluhan / tweet", height=150)
-    if st.button("Analisis"):
-        if not text_input.strip():
-            st.warning("Tolong isi teks terlebih dahulu.")
-        else:
-            pred_label, proba = predict_reason(text_input)
-            st.subheader(f"Hasil prediksi kategori: **{pred_label}**")
-            proba_dict = {label_map[i]: float(p) for i, p in enumerate(proba)}
-            st.bar_chart(proba_dict)
-            hits = detect_keywords(text_input)
-            if hits:
-                st.write("Kata kunci kamus yang terdeteksi:")
-                for kw, kat in hits:
-                    st.write(f"- `{kw}` → **{kat}**")
-            else:
-                st.write("Tidak ada kata kunci kamus yang terdeteksi.")
-
 elif page == "Alasan Utama Turnover":
     st.title("Alasan Utama Turnover (Feature Importance)")
     top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, 30, 15)
@@ -113,6 +87,13 @@ if page == "Overview Dataset":
     st.subheader("Distribusi Kategori Alasan")
     cat_counts = df["kategori"].value_counts().reindex(label_list)
     st.bar_chart(cat_counts)
+        st.subheader("Proporsi Kategori Alasan (Pie Chart)")
+    df_pie = cat_counts.reset_index()
+    df_pie.columns = ["kategori", "jumlah"]
+    st.plotly_chart(
+        px.pie(df_pie, names="kategori", values="jumlah", hole=0.3),
+        use_container_width=True
+    )
 
 elif page == "Klasifikasi Keluhan":
     st.title("Klasifikasi Keluhan Kerja")
