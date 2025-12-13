@@ -54,8 +54,32 @@ def detect_keywords(text: str):
 
 st.set_page_config(page_title="Dashboard Turnover Twitter", layout="wide")
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Pilih halaman:", ("Overview Dataset", "Klasifikasi Keluhan", "Alasan Utama Turnover"))
+page = st.sidebar.radio(
+    "Pilih halaman:",
+    ("Overview Dataset", "Preprocessing Pipeline", "Klasifikasi Keluhan", "Alasan Utama Turnover")
+)
+elif page == "Preprocessing Pipeline":
+    st.title("Preprocessing Data Crawling")
+    uploaded = st.file_uploader("Upload file CSV mentah", type=["csv"])
+    if uploaded is not None:
+        df_raw = pd.read_csv(uploaded)
+        st.write("Preview data mentah:")
+        st.dataframe(df_raw.head())
 
+        if st.button("Jalankan preprocessing"):
+            # TODO: panggil fungsi pipeline yang kamu punya
+            df_clean = run_preprocessing(df_raw)  # nanti kita definisikan
+            st.success(f"Preprocessing selesai. Jumlah tweet setelah filter turnover: {len(df_clean)}")
+            st.write("Preview hasil preprocessing:")
+            st.dataframe(df_clean.head())
+
+            csv_bytes = df_clean.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download CSV hasil preprocessing",
+                data=csv_bytes,
+                file_name="hasil_preprocessing_turnover.csv",
+                mime="text/csv",
+            )
 if page == "Overview Dataset":
     st.title("Overview Dataset Turnover Twitter")
     st.metric("Jumlah tweet turnover (setelah filter)", len(df))
