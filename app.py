@@ -310,8 +310,12 @@ elif page == "Analisis SHAP Kamus":
     st.title("Analisis Alasan Resign (SHAP)")
 
     max_n = len(df_shap_k)
-    top_n = st.slider("Tampilkan berapa alasan teratas?", 5, min(25, max_n), 10)
-
+    top_n = st.slider(
+    "Tampilkan berapa alasan teratas?",
+    5,
+    max_n,
+    max_n          # semua baris
+)
     df_top = df_shap_k.head(top_n)
 
     chart = (
