@@ -4,6 +4,7 @@ import numpy as np
 import joblib
 import re
 import plotly.express as px
+import altair as alt
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
 # =========================
@@ -14,10 +15,11 @@ def load_artifacts():
     tfidf = joblib.load("tfidf_turnover.joblib")
     model = joblib.load("xgb_turnover_tfidf.joblib")
     df = pd.read_csv("dataset_turnover_900.csv")
-    df_rank = pd.read_csv("ranking_kamus_xgb.csv")  # CSV 34 baris kamus
-    return tfidf, model, df, df_rank
+    df_rank = pd.read_csv("ranking_kamus_xgb.csv")          # FI XGBoost
+    df_shap_k = pd.read_csv("shap_kamus_importance.csv")    # SHAP kamus
+    return tfidf, model, df, df_rank, df_shap_k
 
-tfidf, model, df, df_rank = load_artifacts()
+tfidf, model, df, df_rank, df_shap_k = load_artifacts()
 
 label_list = ["budaya", "gaji", "karir", "peluang_baru", "wlb"]
 label_map = {i: lab for i, lab in enumerate(label_list)}
@@ -77,12 +79,10 @@ def detect_keywords(text: str):
 
 # =========================
 # PREPROCESSING PIPELINE
-# (SAMA DENGAN NOTEBOOK: TURNOVER + KELUHAN)
 # =========================
 factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 
-# 1) Ekspresi niat/curhat resign & pindah kerja
 turnover_keywords = [
     r"\bresign\b",
     r"\bpengen resign\b",
@@ -105,7 +105,6 @@ turnover_keywords = [
 ]
 pattern_turnover = re.compile("|".join(turnover_keywords), flags=re.IGNORECASE)
 
-# 2a) Keluhan gaji & benefit
 neg_gaji_keywords = [
     r"\bgaji kecil\b",
     r"\bgaji rendah\b",
@@ -123,7 +122,6 @@ neg_gaji_keywords = [
 ]
 pattern_neg_gaji = re.compile("|".join(neg_gaji_keywords), flags=re.IGNORECASE)
 
-# 2b) Keluhan budaya kerja & lingkungan
 neg_budaya_keywords = [
     r"\bbos toxic\b",
     r"\batasan toxic\b",
@@ -140,7 +138,6 @@ neg_budaya_keywords = [
 ]
 pattern_neg_budaya = re.compile("|".join(neg_budaya_keywords), flags=re.IGNORECASE)
 
-# 2c) Keluhan pengembangan karir
 neg_karir_keywords = [
     r"\bkarir stagnan\b",
     r"\bkarir mentok\b",
@@ -156,7 +153,6 @@ neg_karir_keywords = [
 ]
 pattern_neg_karir = re.compile("|".join(neg_karir_keywords), flags=re.IGNORECASE)
 
-# 2d) Keluhan Work-Life Balance
 neg_wlb_keywords = [
     r"\bwork life balance\b",
     r"\bwlb\b",
@@ -183,10 +179,8 @@ def stem_indonesian(text: str) -> str:
 def is_turnover_related(text: str) -> bool:
     if not isinstance(text, str):
         return False
-    # 1) niat/curhat soal resign/pindah/ditawari kerja
     if pattern_turnover.search(text):
         return True
-    # 2) keluhan eksplisit tentang gaji, budaya, karir, atau WLB
     if (
         pattern_neg_gaji.search(text)
         or pattern_neg_budaya.search(text)
@@ -213,17 +207,13 @@ def label_kategori_pre(text: str) -> str:
 
 def run_preprocessing(df_raw: pd.DataFrame) -> pd.DataFrame:
     df_work = df_raw.copy()
-
     if "full_text" not in df_work.columns:
         raise ValueError("Kolom 'full_text' tidak ditemukan di file upload.")
-
     df_work["text_clean_basic"] = df_work["full_text"].apply(basic_clean)
     df_work["text_stem"] = df_work["text_clean_basic"].apply(stem_indonesian)
     df_work["is_turnover_related"] = df_work["text_stem"].apply(is_turnover_related)
-
     df_turnover = df_work[df_work["is_turnover_related"]].reset_index(drop=True)
     df_turnover["kategori"] = df_turnover["text_stem"].apply(label_kategori_pre)
-
     return df_turnover
 
 # =========================
@@ -234,7 +224,13 @@ st.set_page_config(page_title="Dashboard Turnover Twitter", layout="wide")
 st.sidebar.title("Menu")
 page = st.sidebar.radio(
     "Pilih halaman:",
-    ("Overview Dataset", "Preprocessing Pipeline", "Klasifikasi Keluhan", "Alasan Utama Turnover")
+    (
+        "Overview Dataset",
+        "Preprocessing Pipeline",
+        "Klasifikasi Keluhan",
+        "Alasan Utama Turnover",
+        "Analisis SHAP Kamus",
+    ),
 )
 
 # ---------- Overview ----------
@@ -264,7 +260,9 @@ elif page == "Preprocessing Pipeline":
         if st.button("Jalankan preprocessing"):
             try:
                 df_clean = run_preprocessing(df_raw)
-                st.success(f"Preprocessing selesai. Jumlah tweet setelah filter turnover/keluhan: {len(df_clean)}")
+                st.success(
+                    f"Preprocessing selesai. Jumlah tweet setelah filter turnover/keluhan: {len(df_clean)}"
+                )
                 st.write("Preview hasil preprocessing:")
                 st.dataframe(df_clean.head())
 
@@ -298,11 +296,32 @@ elif page == "Klasifikasi Keluhan":
             else:
                 st.write("Tidak ada kata kunci kamus yang terdeteksi.")
 
-# ---------- Feature Importance ----------
+# ---------- Feature Importance (XGBoost FI) ----------
 elif page == "Alasan Utama Turnover":
-    st.title("Alasan Utama Turnover (Feature Importance)")
+    st.title("Alasan Utama Turnover (Feature Importance XGBoost)")
     max_n = len(df_rank)
     top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, max_n, min(15, max_n))
     df_top = df_rank.head(top_n)
     st.dataframe(df_top[["rank", "keyword", "importance"]])
     st.bar_chart(df_top.set_index("keyword")["importance"])
+
+# ---------- SHAP Kamus ----------
+elif page == "Analisis SHAP Kamus":
+    st.title("Analisis Alasan Resign (SHAP - Kamus)")
+
+    max_n = len(df_shap_k)
+    top_n = st.slider("Tampilkan berapa alasan teratas?", 5, min(25, max_n), 10)
+
+    df_top = df_shap_k.head(top_n)
+
+    chart = (
+        alt.Chart(df_top)
+        .mark_bar()
+        .encode(
+            x=alt.X("mean_abs_shap", title="Rata-rata |SHAP|"),
+            y=alt.Y("feature", sort="-x", title="Keyword / Alasan"),
+            tooltip=["feature", "mean_abs_shap"],
+        )
+    )
+
+    st.altair_chart(chart, use_container_width=True)
