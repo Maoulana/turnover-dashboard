@@ -13,11 +13,8 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 def load_artifacts():
     tfidf = joblib.load("tfidf_turnover.joblib")
     model = joblib.load("xgb_turnover_tfidf.joblib")
-    # dataset balanced terbaru (900 data)
     df = pd.read_csv("dataset_turnover_900.csv")
-    # ranking kamus dari notebook feature importance
-    df_rank = pd.read_csv("ranking_kamus_xgb.csv")
-    df_rank = df_rank.rename(columns={"term": "keyword", "gain": "importance"})
+    df_rank = pd.read_csv("ranking_kamus_xgb.csv")  # CSV 34 baris kamus
     return tfidf, model, df, df_rank
 
 tfidf, model, df, df_rank = load_artifacts()
