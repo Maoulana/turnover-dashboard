@@ -13,7 +13,9 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 def load_artifacts():
     tfidf = joblib.load("tfidf_turnover.joblib")
     model = joblib.load("xgb_turnover_tfidf.joblib")
-    df = pd.read_csv("dataset_turnover_746.csv")
+    # dataset balanced terbaru (900 data)
+    df = pd.read_csv("dataset_turnover_900.csv")
+    # ranking kamus dari notebook feature importance
     df_rank = pd.read_csv("ranking_kamus_xgb.csv")
     return tfidf, model, df, df_rank
 
@@ -77,33 +79,103 @@ def detect_keywords(text: str):
 
 # =========================
 # PREPROCESSING PIPELINE
+# (SAMA DENGAN NOTEBOOK: TURNOVER + KELUHAN)
 # =========================
 factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 
+# 1) Ekspresi niat/curhat resign & pindah kerja
 turnover_keywords = [
     r"\bresign\b",
+    r"\bpengen resign\b",
+    r"\bpengen cabut\b",
+    r"\bpingin resign\b",
+    r"\bpingin cabut\b",
+    r"\bga betah kerja\b",
+    r"\bgak betah kerja\b",
+    r"\bkeluar kerja\b",
     r"\bberhenti kerja\b",
     r"\bberhenti\b",
     r"\bpindah kerja\b",
-    r"\bkeluar kerja\b",
     r"\bcabut\b",
     r"\bmutasi\b",
-    r"\bkerja baru\b",
-    r"\bpekerjaan baru\b",
     r"\bjob offer\b",
+    r"\bjoboffer\b",
     r"\bditerima kerja baru\b",
     r"\btawaran kerja\b",
+    r"\boffer kerja\b",
 ]
 pattern_turnover = re.compile("|".join(turnover_keywords), flags=re.IGNORECASE)
 
-kamus_pre = {
-    "gaji": ["gaji kecil", "gaji rendah", "underpaid", "tunjangan", "bonus", "bonus tahunan", "insentif", "thr"],
-    "budaya": ["rekan bossy", "bos toxic", "atasan toxic", "rekan kerja toxic", "micro management", "micromanagement", "manajemen buruk"],
-    "karir": ["karir stagnan", "promosi jabatan", "jenjang karir", "karir tidak berkembang", "jabatan stuck", "karir stuck"],
-    "wlb": ["work life balance", "lembur", "overtime", "wlb", "burnout", "overwork", "masuk terus"],
-    "peluang_baru": ["pekerjaan baru", "job offer", "pindah kerja", "resign", "cari kerja baru", "tawaran kerja"],
-}
+# 2a) Keluhan gaji & benefit
+neg_gaji_keywords = [
+    r"\bgaji kecil\b",
+    r"\bgaji rendah\b",
+    r"\bunderpaid\b",
+    r"\bgaji ga seberapa\b",
+    r"\bgaji gak seberapa\b",
+    r"\bgaji ga sebanding\b",
+    r"\bgaji gak sebanding\b",
+    r"\bgaji pas-pasan\b",
+    r"\bthr telat\b",
+    r"\bthr gak ada\b",
+    r"\bthr ga ada\b",
+    r"\bthr pelit\b",
+    r"\bbonus pelit\b",
+]
+pattern_neg_gaji = re.compile("|".join(neg_gaji_keywords), flags=re.IGNORECASE)
+
+# 2b) Keluhan budaya kerja & lingkungan
+neg_budaya_keywords = [
+    r"\bbos toxic\b",
+    r"\batasan toxic\b",
+    r"\brekan kerja toxic\b",
+    r"\bteman kerja toxic\b",
+    r"\btempat kerja toxic\b",
+    r"\btoxic workplace\b",
+    r"\bmicro management\b",
+    r"\bmicromanagement\b",
+    r"\bmanajemen buruk\b",
+    r"\bdi-bully\b",
+    r"\bdibully\b",
+    r"\bdirundung\b",
+]
+pattern_neg_budaya = re.compile("|".join(neg_budaya_keywords), flags=re.IGNORECASE)
+
+# 2c) Keluhan pengembangan karir
+neg_karir_keywords = [
+    r"\bkarir stagnan\b",
+    r"\bkarir mentok\b",
+    r"\bkarir stuck\b",
+    r"\bkarir tidak berkembang\b",
+    r"\bkarir ga berkembang\b",
+    r"\bkarir gak berkembang\b",
+    r"\bjenjang karir\b",
+    r"\bga naik pangkat\b",
+    r"\bgak naik pangkat\b",
+    r"\bpromosi mandek\b",
+    r"\bjabatan stuck\b",
+]
+pattern_neg_karir = re.compile("|".join(neg_karir_keywords), flags=re.IGNORECASE)
+
+# 2d) Keluhan Work-Life Balance
+neg_wlb_keywords = [
+    r"\bwork life balance\b",
+    r"\bwlb\b",
+    r"\blembur terus\b",
+    r"\blembur mulu\b",
+    r"\bovertime terus\b",
+    r"\bkerja terus\b",
+    r"\bkerja dari pagi sampe malem\b",
+    r"\bkerja dari pagi sampai malam\b",
+    r"\bkerja ga ada libur\b",
+    r"\bkerja gak ada libur\b",
+    r"\bburnout\b",
+    r"\boverwork\b",
+    r"\bcapek kerja\b",
+    r"\bcapek banget kerja\b",
+]
+pattern_neg_wlb = re.compile("|".join(neg_wlb_keywords), flags=re.IGNORECASE)
 
 def stem_indonesian(text: str) -> str:
     if not isinstance(text, str):
@@ -113,7 +185,26 @@ def stem_indonesian(text: str) -> str:
 def is_turnover_related(text: str) -> bool:
     if not isinstance(text, str):
         return False
-    return bool(pattern_turnover.search(text))
+    # 1) niat/curhat soal resign/pindah/ditawari kerja
+    if pattern_turnover.search(text):
+        return True
+    # 2) keluhan eksplisit tentang gaji, budaya, karir, atau WLB
+    if (
+        pattern_neg_gaji.search(text)
+        or pattern_neg_budaya.search(text)
+        or pattern_neg_karir.search(text)
+        or pattern_neg_wlb.search(text)
+    ):
+        return True
+    return False
+
+kamus_pre = {
+    "gaji": ["gaji kecil", "gaji rendah", "underpaid", "tunjangan", "bonus", "bonus tahunan", "insentif", "thr"],
+    "budaya": ["rekan bossy", "bos toxic", "atasan toxic", "rekan kerja toxic", "micro management", "micromanagement", "manajemen buruk"],
+    "karir": ["karir stagnan", "promosi jabatan", "jenjang karir", "karir tidak berkembang", "jabatan stuck", "karir stuck"],
+    "wlb": ["work life balance", "lembur", "overtime", "wlb", "burnout", "overwork", "masuk terus"],
+    "peluang_baru": ["pekerjaan baru", "job offer", "pindah kerja", "resign", "cari kerja baru", "tawaran kerja"],
+}
 
 def label_kategori_pre(text: str) -> str:
     text_low = text.lower() if isinstance(text, str) else ""
@@ -151,7 +242,7 @@ page = st.sidebar.radio(
 # ---------- Overview ----------
 if page == "Overview Dataset":
     st.title("Overview Dataset Turnover Twitter")
-    st.metric("Jumlah tweet turnover (setelah filter)", len(df))
+    st.metric("Jumlah tweet turnover/keluhan (setelah filter)", len(df))
 
     st.subheader("Distribusi Kategori Alasan (Bar Chart)")
     cat_counts = df["kategori"].value_counts().reindex(label_list)
@@ -175,7 +266,7 @@ elif page == "Preprocessing Pipeline":
         if st.button("Jalankan preprocessing"):
             try:
                 df_clean = run_preprocessing(df_raw)
-                st.success(f"Preprocessing selesai. Jumlah tweet setelah filter turnover: {len(df_clean)}")
+                st.success(f"Preprocessing selesai. Jumlah tweet setelah filter turnover/keluhan: {len(df_clean)}")
                 st.write("Preview hasil preprocessing:")
                 st.dataframe(df_clean.head())
 
@@ -212,7 +303,8 @@ elif page == "Klasifikasi Keluhan":
 # ---------- Feature Importance ----------
 elif page == "Alasan Utama Turnover":
     st.title("Alasan Utama Turnover (Feature Importance)")
-    top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, 30, 15)
+    max_n = len(df_rank)
+    top_n = st.slider("Tampilkan berapa kata kunci teratas?", 5, max_n, min(15, max_n))
     df_top = df_rank.head(top_n)
     st.dataframe(df_top[["rank", "keyword", "importance"]])
     st.bar_chart(df_top.set_index("keyword")["importance"])
