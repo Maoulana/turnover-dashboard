@@ -216,6 +216,38 @@ def run_preprocessing(df_raw: pd.DataFrame) -> pd.DataFrame:
     df_turnover["kategori"] = df_turnover["text_stem"].apply(label_kategori_pre)
     return df_turnover
 
+map_shap_kat = {
+    "gaji": [
+        "kw_gaji_kecil", "kw_underpaid", "kw_gaji_rendah",
+        "kw_bonus", "kw_insentif", "kw_thr"
+    ],
+    "budaya": [
+        "kw_rekan_kerja_toxic", "kw_bos_toxic", "kw_atasan_toxic",
+        "kw_manajemen_buruk", "kw_micro_management", "kw_micromanagement"
+    ],
+    "karir": [
+        "kw_jenjang_karir", "kw_karir_stuck", "kw_karir_stagnan",
+        "kw_jabatan_stuck", "kw_promosi_jabatan", "kw_karir_tidak_berkembang"
+    ],
+    "wlb": [
+        "kw_wlb", "kw_work_life_balance", "kw_overwork",
+        "kw_burnout", "kw_lembur", "kw_overtime", "kw_masuk_terus"
+    ],
+    "peluang_baru": [
+        "kw_job_offer", "kw_tawaran_kerja", "kw_pekerjaan_baru",
+        "kw_offer_kerja", "kw_diterima_kerja_baru", "kw_cari_kerja_baru"
+    ],
+}
+
+def aggregate_shap_by_category(df_shap_k, map_kat):
+    rows = []
+    for kat, fitur_list in map_kat.items():
+        mask = df_shap_k["feature"].isin(fitur_list)
+        total_shap = df_shap_k.loc[mask, "mean_abs_shap"].sum()
+        rows.append({"kategori": kat, "total_shap": total_shap})
+    df_kat = pd.DataFrame(rows).sort_values("total_shap", ascending=False)
+    return df_kat
+    
 # =========================
 # KONFIGURASI HALAMAN
 # =========================
@@ -234,19 +266,22 @@ page = st.sidebar.radio(
 )
 
 # ---------- Overview ----------
+# ---------- Overview ----------
 if page == "Overview Dataset":
-    st.title("Overview Dataset Turnover Twitter")
-    st.metric("Jumlah tweet turnover/keluhan (setelah filter)", len(df))
+    st.title("Overview Alasan Resign (Berbasis SHAP Kamus)")
 
-    st.subheader("Distribusi Kategori Alasan (Bar Chart)")
-    cat_counts = df["kategori"].value_counts().reindex(label_list)
-    st.bar_chart(cat_counts)
+    df_kat = aggregate_shap_by_category(df_shap_k, map_shap_kat)
 
-    st.subheader("Proporsi Kategori Alasan (Pie Chart)")
-    df_pie = cat_counts.reset_index()
-    df_pie.columns = ["kategori", "jumlah"]
-    fig_pie = px.pie(df_pie, names="kategori", values="jumlah", hole=0.3)
-    st.plotly_chart(fig_pie, use_container_width=True)
+    st.subheader("Ranking Kategori Alasan (Total SHAP)")
+    st.dataframe(df_kat)
+
+    st.subheader("Bar Total SHAP per Kategori")
+    st.bar_chart(df_kat.set_index("kategori")["total_shap"])
+
+    st.caption(
+        "Semakin besar total SHAP, semakin kuat kontribusi kumpulan keyword "
+        "kategori tersebut dalam keputusan model klasifikasi turnover."
+    )
 
 # ---------- Preprocessing ----------
 elif page == "Preprocessing Pipeline":
