@@ -40,8 +40,8 @@ kamus_deteksi = {
         "overwork", "masuk terus"
     ],
     "peluang_baru": [
-        "pekerjaan baru", "job offer", "pindah kerja", "resign",
-        "cari kerja baru", "tawaran kerja"
+        "pekerjaan baru", "job offer", "tawaran kerja", "offer kerja",
+        "diterima kerja baru", "cari kerja baru"
     ],
 }
 
@@ -201,7 +201,7 @@ kamus_pre = {
     "budaya": ["rekan bossy", "bos toxic", "atasan toxic", "rekan kerja toxic", "micro management", "micromanagement", "manajemen buruk"],
     "karir": ["karir stagnan", "promosi jabatan", "jenjang karir", "karir tidak berkembang", "jabatan stuck", "karir stuck"],
     "wlb": ["work life balance", "lembur", "overtime", "wlb", "burnout", "overwork", "masuk terus"],
-    "peluang_baru": ["pekerjaan baru", "job offer", "pindah kerja", "resign", "cari kerja baru", "tawaran kerja"],
+    "peluang_baru": ["pekerjaan baru", "job offer", "tawaran kerja", "offer kerja", "diterima kerja baru", "cari kerja baru"],
 }
 
 def label_kategori_pre(text: str) -> str:
