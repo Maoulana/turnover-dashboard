@@ -17,6 +17,7 @@ def load_artifacts():
     df = pd.read_csv("dataset_turnover_900.csv")
     # ranking kamus dari notebook feature importance
     df_rank = pd.read_csv("ranking_kamus_xgb.csv")
+    df_rank = df_rank.rename(columns={"term": "keyword", "gain": "importance"})
     return tfidf, model, df, df_rank
 
 tfidf, model, df, df_rank = load_artifacts()
