@@ -307,7 +307,7 @@ elif page == "Alasan Utama Turnover":
 
 # ---------- SHAP Kamus ----------
 elif page == "Analisis SHAP Kamus":
-    st.title("Analisis Alasan Resign (SHAP - Kamus)")
+    st.title("Analisis Alasan Resign (SHAP)")
 
     max_n = len(df_shap_k)
     top_n = st.slider("Tampilkan berapa alasan teratas?", 5, min(25, max_n), 10)
